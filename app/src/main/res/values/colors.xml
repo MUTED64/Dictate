@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--    Material 400-->
-    <color name="dictate_blue">#29B6F6</color>
+    <color name="dictate_blue">#006590</color>
 
     <!--    Material 600-->
-    <color name="dictate_blue_dark">#1C7EAB</color>
+    <color name="dictate_blue_dark">#88ceff</color>
 
-    <color name="dictate_white">#ffffff</color>
-    <color name="dictate_black">#000000</color>
+    <color name="dictate_white">#fcfcff</color>
+    <color name="dictate_black">#191c1e</color>
     <color name="dictate_grey">#A8A8A8</color>
     <color name="dictate_red">#E53935</color>
     <color name="dictate_green">#43A047</color>
+
+    <color name="dictate_keyboard_background">#1b1b1d</color>
+    <color name="dictate_button_background_tint">@color/material_dynamic_primary30</color>
+    <color name="dictate_button_icon_tint">@color/material_dynamic_primary90</color>
+    <color name="dictate_info_background">#2A2A2C</color>
 
     <color name="dictate_keyboard_background_dark">#1b1b1d</color>
 </resources>

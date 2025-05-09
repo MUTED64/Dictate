@@ -201,4 +201,6 @@
     <string name="dictate_proxy_invalid_message">您的代理地址必须以代理服务器的 IP 或域名开头，后跟一个“:”，然后是端口。请再次检查。</string>
     <string name="dictate_changelog_22">v2.7.2\n\n这只是一个小更新，它添加了在设置中为所有与 OpenAI 的连接配置 http 代理的功能。 🛡️\n此外，还进行了一些错误修复。 ✨\n\n与往常一样，请随时通过 GitHub 或下面的电子邮件按钮与我联系，提出问题和想法。 ☺️\n\n\n</string>
     <string name="dictate_settings_silicon_api_key_title">更改 Siliconflow API 密钥 🔑</string>
+    <string name="dictate_settings_switch_back_after_transcription_title">转录完成自动切换输入法 🔄</string>
+    <string name="dictate_settings_switch_back_after_transcription_summary">转录完成自动切换到上一个使用过的输入法</string>
 </resources>

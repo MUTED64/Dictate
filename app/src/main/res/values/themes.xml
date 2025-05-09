@@ -4,11 +4,13 @@
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/dictate_blue</item>
         <item name="colorPrimaryVariant">@color/dictate_blue</item>
-        <item name="colorOnPrimary">@color/dictate_black</item>
+        <item name="colorOnPrimary">@color/dictate_white</item>
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/dictate_blue</item>
         <item name="colorSecondaryVariant">@color/dictate_blue</item>
-        <item name="colorOnSecondary">@color/dictate_black</item>
+        <item name="colorOnSecondary">@color/dictate_white</item>
+        <!-- Background color -->
+        <item name="colorOnBackground">@color/dictate_white</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor" >?attr/colorPrimaryVariant</item>
 

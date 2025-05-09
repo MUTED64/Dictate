@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/AutoTheme">
 
     <androidx.preference.PreferenceCategory
         android:title="@string/dictate_settings_rewording_title"
@@ -80,6 +81,13 @@
             android:key="net.devemperor.dictate.instant_recording"
             android:title="@string/dictate_settings_instant_recording_title"
             android:summary="@string/dictate_settings_instant_recording_summary"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false"/>
+
+        <androidx.preference.SwitchPreference
+            android:key="net.devemperor.dictate.switch_back_after_transcription"
+            android:title="@string/dictate_settings_switch_back_after_transcription_title"
+            android:summary="@string/dictate_settings_switch_back_after_transcription_summary"
             android:defaultValue="false"
             app:iconSpaceReserved="false"/>
 

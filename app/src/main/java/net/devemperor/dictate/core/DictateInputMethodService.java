@@ -143,6 +143,7 @@ public class DictateInputMethodService extends InputMethodService {
     private MaterialButton editCopyButton;
     private MaterialButton editPasteButton;
     private LinearLayout overlayCharactersLl;
+    private boolean autoSwitchBackAfterTranscription;
 
     PromptsDatabaseHelper promptsDb;
     PromptsKeyboardAdapter promptsAdapter;
@@ -644,6 +645,8 @@ public class DictateInputMethodService extends InputMethodService {
         } else if (sp.getBoolean("net.devemperor.dictate.instant_recording", false)) {
             recordButton.performClick();
         }
+
+        autoSwitchBackAfterTranscription = sp.getBoolean("net.devemperor.dictate.switch_back_after_transcription", false);
     }
 
     // method is called if user changed text selection
@@ -898,6 +901,9 @@ public class DictateInputMethodService extends InputMethodService {
                         recordButton.setText(getDictateButtonText()); // 或通用文本
                         recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
                         recordButton.setEnabled(true);
+                        if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            switchToPreviousInputMethod();
+                        }
                     });
                 }
             });
@@ -982,6 +988,9 @@ public class DictateInputMethodService extends InputMethodService {
                     recordButton.setText(getDictateButtonText());
                     recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
                     recordButton.setEnabled(true);
+                    if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        switchToPreviousInputMethod();
+                    }
                 });
             });
         }
@@ -1070,6 +1079,9 @@ public class DictateInputMethodService extends InputMethodService {
                 promptsRv.setVisibility(View.VISIBLE);
                 runningPromptTv.setVisibility(View.GONE);
                 runningPromptPb.setVisibility(View.GONE);
+                if (autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    switchToPreviousInputMethod();
+                }
             });
         });
     }

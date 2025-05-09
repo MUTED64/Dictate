@@ -5,7 +5,6 @@
     android:id="@+id/dictate_keyboard_view"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/dictate_keyboard_background_dark"
     android:keepScreenOn="true">
 
     <com.google.android.material.button.MaterialButton
@@ -13,8 +12,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:foreground="@drawable/ic_baseline_settings_24"
-        android:foregroundGravity="center"
+            app:icon="@drawable/ic_baseline_settings_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
         android:minWidth="56dp"
         app:layout_constraintBottom_toTopOf="@+id/switch_btn"
         app:layout_constraintStart_toStartOf="parent"
@@ -39,8 +39,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
-        android:foreground="@drawable/ic_outline_change_circle_24"
-        android:foregroundGravity="center"
+            app:icon="@drawable/ic_outline_change_circle_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
         android:minWidth="0dp"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/space_btn"
@@ -55,8 +56,9 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="16dp"
-        android:foreground="@drawable/ic_baseline_keyboard_backspace_24"
-        android:foregroundGravity="center"
+            app:icon="@drawable/ic_baseline_keyboard_backspace_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
         android:minWidth="56dp"
         app:layout_constraintBottom_toTopOf="@+id/enter_btn"
         app:layout_constraintEnd_toEndOf="parent"
@@ -70,8 +72,9 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="16dp"
-        android:foreground="@drawable/ic_baseline_keyboard_hide_24"
-        android:foregroundGravity="center"
+            app:icon="@drawable/ic_baseline_keyboard_hide_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
         android:minWidth="56dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/trash_btn"
@@ -83,8 +86,9 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginBottom="16dp"
-        android:foreground="@drawable/ic_baseline_delete_24"
-        android:foregroundGravity="center"
+            app:icon="@drawable/ic_baseline_delete_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
         android:minWidth="0dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -109,8 +113,9 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="16dp"
-        android:foreground="@drawable/ic_baseline_pause_24"
-        android:foregroundGravity="center"
+            app:icon="@drawable/ic_baseline_pause_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
         android:minWidth="0dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -125,8 +130,9 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
-        android:foreground="@drawable/ic_baseline_subdirectory_arrow_left_24"
-        android:foregroundGravity="center"
+            app:icon="@drawable/ic_baseline_subdirectory_arrow_left_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
         android:minWidth="56dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/pause_btn"
@@ -195,7 +201,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/edit_buttons_keyboard_ll"
         android:layout_width="0dp"
-        android:layout_height="36dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
@@ -206,20 +212,23 @@
             android:id="@+id/edit_select_all_btn"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:foreground="@drawable/ic_baseline_select_all_24"
-            android:foregroundGravity="center"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="4dp"
+                        app:icon="@drawable/ic_baseline_select_all_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:layout_constraintEnd_toStartOf="@id/edit_undo_btn"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/edit_undo_btn"/>
+            tools:layout_editor_absoluteY="0dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/edit_undo_btn"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:foreground="@drawable/ic_baseline_undo_24"
-            android:foregroundGravity="center"
             android:layout_marginHorizontal="4dp"
+                        app:icon="@drawable/ic_baseline_undo_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
             app:layout_constraintEnd_toStartOf="@+id/edit_redo_btn"
             app:layout_constraintStart_toEndOf="@+id/edit_select_all_btn" />
 
@@ -227,9 +236,10 @@
             android:id="@+id/edit_redo_btn"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:foreground="@drawable/ic_baseline_redo_24"
-            android:foregroundGravity="center"
             android:layout_marginHorizontal="4dp"
+                        app:icon="@drawable/ic_baseline_redo_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
             app:layout_constraintEnd_toStartOf="@+id/edit_cut_btn"
             app:layout_constraintStart_toEndOf="@+id/edit_undo_btn" />
 
@@ -237,9 +247,10 @@
             android:id="@+id/edit_cut_btn"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:foreground="@drawable/ic_baseline_content_cut_24"
-            android:foregroundGravity="center"
             android:layout_marginHorizontal="4dp"
+            app:icon="@drawable/ic_baseline_content_cut_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
             app:layout_constraintEnd_toStartOf="@+id/edit_copy_btn"
             app:layout_constraintStart_toEndOf="@+id/edit_redo_btn" />
 
@@ -247,9 +258,10 @@
             android:id="@+id/edit_copy_btn"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:foreground="@drawable/ic_baseline_content_copy_24"
-            android:foregroundGravity="center"
             android:layout_marginHorizontal="4dp"
+                        app:icon="@drawable/ic_baseline_content_copy_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
             app:layout_constraintEnd_toStartOf="@+id/edit_paste_btn"
             app:layout_constraintStart_toEndOf="@+id/edit_cut_btn" />
 
@@ -257,12 +269,13 @@
             android:id="@+id/edit_paste_btn"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:foreground="@drawable/ic_baseline_content_paste_24"
-            android:foregroundGravity="center"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="16dp"
+                        app:icon="@drawable/ic_baseline_content_paste_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/edit_copy_btn"/>
+            app:layout_constraintStart_toEndOf="@id/edit_copy_btn" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -308,7 +321,7 @@
                 android:maxLines="1"
                 android:textStyle="bold"
                 android:textSize="16sp"
-                android:textColor="@color/dictate_blue"
+                android:textColor="?attr/colorPrimary"
                 android:visibility="gone"
                 tools:visibility="visible"
                 tools:text="French translator"/>
@@ -325,17 +338,21 @@
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+
     <LinearLayout
         android:id="@+id/overlay_characters_ll"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:orientation="horizontal"
+        android:background="@drawable/overlay_characters_background"
+        android:padding="4dp"
+        android:elevation="4dp"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/enter_btn"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/edit_buttons_keyboard_ll"
         tools:visibility="visible"
-        tools:layout_width="72dp" />
+        tools:layout_width="wrap_content" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
