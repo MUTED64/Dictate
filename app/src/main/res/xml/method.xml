@@ -3,5 +3,8 @@
     android:settingsActivity="net.devemperor.dictate.settings.DictateSettingsActivity"
     android:supportsSwitchingToNextInputMethod="true">
     <subtype
-        android:imeSubtypeMode="keyboard"/>
+        android:imeSubtypeLocale=""
+        android:imeSubtypeMode="voice"
+        android:isAuxiliary="true"
+        android:overridesImplicitlyEnabledSubtype="true" />
 </input-method>
