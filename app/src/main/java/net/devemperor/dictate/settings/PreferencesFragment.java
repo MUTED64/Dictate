@@ -136,6 +136,22 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
             });
         }
 
+        EditTextPreference siliconflowApiKeyPreference = findPreference("net.devemperor.dictate.siliconflow_api_key");
+        if (siliconflowApiKeyPreference != null) {
+            siliconflowApiKeyPreference.setSummaryProvider((Preference.SummaryProvider<EditTextPreference>) preference -> {
+                String key = preference.getText();
+                if (TextUtils.isEmpty(key)) return getString(R.string.dictate_no_api_key);
+                if (key.length() <= 10) return key;
+                return key.substring(0, 8) + "..." + key.substring(key.length() - 8);
+            });
+
+            siliconflowApiKeyPreference.setOnBindEditTextListener(editText -> {
+                editText.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                editText.setSingleLine(true);
+                editText.setHint(R.string.dictate_api_key_hint);
+            });
+        }
+
         Preference promptPreference = findPreference("net.devemperor.dictate.prompt");
         if (promptPreference != null) {
             promptPreference.setOnPreferenceClickListener(preference -> {

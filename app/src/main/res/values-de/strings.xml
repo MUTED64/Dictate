@@ -201,4 +201,5 @@
     <string name="dictate_proxy_invalid_title">Ungültige Proxy Adresse</string>
     <string name="dictate_proxy_invalid_message">Deine Proxy-Adresse muss mit der IP oder der Domain deines Proxy-Servers beginnen, einem \':\', gefolgt von dem Port. Bitte überprüfe dies noch einmal.</string>
     <string name="dictate_changelog_22">v2.7.2\n\nDies ist nur ein kleines Update, das die Option hinzugefügt hat, einen HTTP-Proxy in den Einstellungen für alle Verbindungen zu OpenAI festzulegen. 🛡️\nZusätzlich wurden einige Fehlerbehebungen vorgenommen. ✨\n\nWie immer, zögere nicht, mich mit Fragen und Ideen über GitHub oder den E-Mail-Button unten zu kontaktieren. ☺️\n\n\n</string>
+    <string name="dictate_settings_silicon_api_key_title">Change Siliconflow API key 🔑</string>
 </resources>
