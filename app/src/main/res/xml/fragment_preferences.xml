@@ -118,6 +118,15 @@
             app:dialogTitle="@string/dictate_settings_api_key_title"
             app:iconSpaceReserved="false"/>
 
+        <EditTextPreference
+            android:key="net.devemperor.dictate.siliconflow_api_key"
+            android:summary="No SiliconFlow API key set"
+            android:title="SiliconFlow API Key 🔑"
+            app:dialogTitle="SiliconFlow API Key"
+            app:iconSpaceReserved="false"
+            app:negativeButtonText="@string/dictate_cancel"
+            app:positiveButtonText="@string/dictate_okay" />
+
         <androidx.preference.ListPreference
             android:key="net.devemperor.dictate.transcription_model"
             android:title="@string/dictate_settings_transcription_model_title"

@@ -269,11 +269,13 @@
         <item>GPT-4o mini transcribe\n(0.18 $ / h)</item>
         <item>GPT-4o transcribe\n(0.36 $ / h)</item>
         <item>Whisper V2\n(0.36 $ / h)</item>
+        <item>SenseVoiceSmall(Free)</item>
     </string-array>
 
     <string-array name="dictate_transcription_models_values">
         <item>gpt-4o-mini-transcribe</item>
         <item>gpt-4o-transcribe</item>
         <item>whisper-1</item>
+        <item>FunAudioLLM/SenseVoiceSmall</item>
     </string-array>
 </resources>

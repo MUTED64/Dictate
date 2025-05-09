@@ -75,6 +75,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 
 // MAIN CLASS
 public class DictateInputMethodService extends InputMethodService {
@@ -262,7 +269,7 @@ public class DictateInputMethodService extends InputMethodService {
         resendButton.setOnClickListener(v -> {
             vibrate();
             // if user clicked on resendButton without error before, audioFile is default audio
-            if (audioFile == null) audioFile = new File(getCacheDir(), sp.getString("net.devemperor.dictate.last_file_name", "audio.m4a"));
+            if (audioFile == null) audioFile = new File(getCacheDir(), sp.getString("net.devemperor.dictate.last_file_name", "audio.mp3"));
             startWhisperApiRequest();
         });
 
@@ -591,7 +598,7 @@ public class DictateInputMethodService extends InputMethodService {
         }
 
         // enable resend button if previous audio file still exists in cache
-        if (new File(getCacheDir(), sp.getString("net.devemperor.dictate.last_file_name", "audio.m4a")).exists()
+        if (new File(getCacheDir(), sp.getString("net.devemperor.dictate.last_file_name", "audio.mp3")).exists()
                 && sp.getBoolean("net.devemperor.dictate.resend_button", false)) {
             resendButton.setVisibility(View.VISIBLE);
         } else {
@@ -677,7 +684,7 @@ public class DictateInputMethodService extends InputMethodService {
     }
 
     private void startRecording() {
-        audioFile = new File(getCacheDir(), "audio.m4a");
+        audioFile = new File(getCacheDir(), "audio.mp3");
         sp.edit().putString("net.devemperor.dictate.last_file_name", audioFile.getName()).apply();
 
         recorder = new MediaRecorder();
@@ -752,92 +759,233 @@ public class DictateInputMethodService extends InputMethodService {
 
         String customApiHost = sp.getString("net.devemperor.dictate.custom_api_host", getString(R.string.dictate_custom_host_hint));
         String apiKey = sp.getString("net.devemperor.dictate.api_key", "NO_API_KEY").replaceAll("[^ -~]", "");
-        String transcriptionModel = sp.getString("net.devemperor.dictate.transcription_model", "gpt-4o-mini-transcribe");
+        String transcriptionModel = sp.getString("net.devemperor.dictate.transcription_model", "FunAudioLLM/SenseVoiceSmall");
         String proxyHost = sp.getString("net.devemperor.dictate.proxy_host", getString(R.string.dictate_settings_proxy_hint));
 
         speechApiThread = Executors.newSingleThreadExecutor();
-        speechApiThread.execute(() -> {
-            try {
-                OpenAIOkHttpClient.Builder clientBuilder = OpenAIOkHttpClient.builder()
-                        .apiKey(apiKey)
-                        .baseUrl(sp.getBoolean("net.devemperor.dictate.custom_api_host_enabled", false) ? customApiHost : "https://api.openai.com/v1/")
-                        .timeout(Duration.ofSeconds(120));
+        if (transcriptionModel.equals("FunAudioLLM/SenseVoiceSmall")) {
+            speechApiThread.execute(() -> {
+                try {
+                    // 1. 获取 API 令牌和音频文件
+                    String siliconFlowToken = sp.getString("net.devemperor.dictate.siliconflow_api_key", "DEIN_SILICONFLOW_TOKEN_FALLBACK"); // 从 SharedPreferences 中获取密钥
+                    // audioFile 已经存在
 
-                TranscriptionCreateParams.Builder transcriptionBuilder = TranscriptionCreateParams.builder()
-                        .file(audioFile.toPath())
-                        .model(transcriptionModel)
-                        .responseFormat(AudioResponseFormat.JSON);  // gpt-4o-transcribe only supports json
+                    // 2. 创建 OkHttpClient 实例
+                    OkHttpClient client = new OkHttpClient.Builder()
+                            .connectTimeout(120, TimeUnit.SECONDS) // 像原始代码一样设置超时
+                            .readTimeout(120, TimeUnit.SECONDS)
+                            .writeTimeout(120, TimeUnit.SECONDS)
+                            .proxy(sp.getBoolean("net.devemperor.dictate.proxy_enabled", false) ?
+                                    new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
+                                            sp.getString("net.devemperor.dictate.proxy_host", getString(R.string.dictate_settings_proxy_hint)).split(":")[0],
+                                            Integer.parseInt(sp.getString("net.devemperor.dictate.proxy_host", getString(R.string.dictate_settings_proxy_hint)).split(":")[1])))
+                                    : null) // 保持代理支持
+                            .build();
 
-                if (!currentInputLanguageValue.equals("detect")) transcriptionBuilder.language(currentInputLanguageValue);
-                if (!stylePrompt.isEmpty()) transcriptionBuilder.prompt(stylePrompt);
-                if (sp.getBoolean("net.devemperor.dictate.proxy_enabled", false)) {
-                    clientBuilder.proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost.split(":")[0], Integer.parseInt(proxyHost.split(":")[1]))));
-                }
+                    // 3. 创建 Multipart-Request-Body
+                    RequestBody requestBody = new MultipartBody.Builder()
+                            .setType(MultipartBody.FORM)
+                            .addFormDataPart("file", audioFile.getName(), // 文件名
+                                    RequestBody.create(audioFile, MediaType.parse("audio/mp3"))) // 文件内容和媒体类型（如果需要，调整）
+                            .addFormDataPart("model", "FunAudioLLM/SenseVoiceSmall") // 作为表单字段的模型
+                            // 如果 SiliconFlow 支持其他参数，如语言，请在此处添加：
+                            // .addFormDataPart("language", currentInputLanguageValue) // 示例
+                            .build();
 
-                Transcription transcription = clientBuilder.build().audio().transcriptions().create(transcriptionBuilder.build()).asTranscription();
-                String resultText = transcription.text();
+                    // 4. 创建 Request
+                    Request request = new Request.Builder()
+                            .url("https://api.siliconflow.cn/v1/audio/transcriptions")
+                            .header("Authorization", "Bearer " + siliconFlowToken)
+                            // OkHttp 自动为 MultipartBody 设置正确的 Content-Type。
+                            .post(requestBody)
+                            .build();
 
-                usageDb.edit(transcriptionModel, DictateUtils.getAudioDuration(audioFile), 0, 0);
+                    // 5. 执行 Request 并处理响应
+                    String resultText = "";
+                    try (okhttp3.Response response = client.newCall(request).execute()) {
+                        if (!response.isSuccessful()) {
+                            String errorBody = response.body() != null ? response.body().string() : "Unknown error";
+                            Log.e("SiliconFlowAPI", "Error: " + response.code() + " " + errorBody);
+                            // 在此处调整/使用现有的错误处理
+                            if (vibrationEnabled)
+                                vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
+                            mainHandler.post(() -> {
+                                resendButton.setVisibility(View.VISIBLE);
+                                // 根据 response.code() 或 errorBody 提供更具体的错误消息
+                                if (errorBody.toLowerCase().contains("authentication") || response.code() == 401) {
+                                    showInfo("invalid_api_key"); // 或针对 SiliconFlow 的新信息消息
+                                } else if (errorBody.toLowerCase().contains("quota") || response.code() == 429) {
+                                    showInfo("quota_exceeded"); // 或新信息消息
+                                } else {
+                                    showInfo("internet_error");
+                                }
+                            });
+                            return; // 重要：在此处结束线程
+                        }
 
-                if (!instantPrompt) {
-                    InputConnection inputConnection = getCurrentInputConnection();
-                    if (inputConnection != null) {
-                        if (sp.getBoolean("net.devemperor.dictate.instant_output", false)) {
-                            inputConnection.commitText(resultText, 1);
-                        } else {
-                            int speed = sp.getInt("net.devemperor.dictate.output_speed", 5);
-                            for (int i = 0; i < resultText.length(); i++) {
-                                char character = resultText.charAt(i);
-                                mainHandler.postDelayed(() -> inputConnection.commitText(String.valueOf(character), 1), (long) (i * (20L / (speed / 5f))));
+                        String responseBodyString = response.body() != null ? response.body().string() : "";
+                        Log.d("SiliconFlowAPI", "Response: " + responseBodyString);
+
+                        // 6. 解析 JSON 响应 (假设: {"text": "转录的文本"})
+                        // 你需要一个 JSON 解析器。 Android 内置了 org.json。
+                        try {
+                            org.json.JSONObject jsonResponse = new org.json.JSONObject(responseBodyString);
+                            // 文本的 Key 可能不同，请参阅 SiliconFlow 文档!
+                            if (jsonResponse.has("text")) { // 确保 Key 存在
+                                resultText = jsonResponse.getString("text");
+                            } else if (jsonResponse.has("result")) { // 备用 Key，以防 SiliconFlow 响应不同
+                                resultText = jsonResponse.getString("result");
+                            } else {
+                                // 如果响应结构未知或缺少文本
+                                Log.e("SiliconFlowAPI", "Transcribed text not found in response: " + responseBodyString);
+                                // 错误处理...
                             }
+                        } catch (org.json.JSONException e) {
+                            Log.e("SiliconFlowAPI", "JSON parsing error", e);
+                            sendLogToCrashlytics(new RuntimeException("SiliconFlow JSONException", e));
+                            // 错误处理...
+                            return;
                         }
                     }
-                } else {
-                    // continue with ChatGPT API request
-                    instantPrompt = false;
-                    startGPTApiRequest(new PromptModel(-1, Integer.MIN_VALUE, "", resultText, false));
-                }
 
-                if (new File(getCacheDir(), sp.getString("net.devemperor.dictate.last_file_name", "audio.m4a")).exists()
-                        && sp.getBoolean("net.devemperor.dictate.resend_button", false)) {
-                    mainHandler.post(() -> resendButton.setVisibility(View.VISIBLE));
-                }
+                    // 调整成本计算（或删除，如果无关紧要）
+                    // usageDb.edit("FunAudioLLM/SenseVoiceSmall", DictateUtils.getAudioDuration(audioFile), 0, 0); // 调整模型名称
 
-            } catch (RuntimeException e) {
-                if (!(e.getCause() instanceof InterruptedIOException)) {
-                    sendLogToCrashlytics(e);
-                    if (vibrationEnabled) vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
-                    mainHandler.post(() -> {
-                        resendButton.setVisibility(View.VISIBLE);
-                        if (Objects.requireNonNull(e.getMessage()).contains("API key")) {
-                            showInfo("invalid_api_key");
-                        } else if (e.getMessage().contains("quota")) {
-                            showInfo("quota_exceeded");
-                        } else if (e.getMessage().contains("audio duration") || e.getMessage().contains("content size limit")) {  // gpt-o-transcribe and whisper have different limits
-                            showInfo("content_size_limit");
-                        } else if (e.getMessage().contains("format")) {
-                            showInfo("format_not_supported");
-                        } else {
-                            showInfo("internet_error");
+                    // 其余的插入文本等逻辑保持相似
+                    if (!instantPrompt && !resultText.isEmpty()) {
+                        InputConnection inputConnection = getCurrentInputConnection();
+                        if (inputConnection != null) {
+                            if (sp.getBoolean("net.devemperor.dictate.instant_output", false)) {
+                                inputConnection.commitText(resultText, 1);
+                            } else {
+                                int speed = sp.getInt("net.devemperor.dictate.output_speed", 5);
+                                for (int i = 0; i < resultText.length(); i++) {
+                                    char character = resultText.charAt(i);
+                                    mainHandler.postDelayed(() -> inputConnection.commitText(String.valueOf(character), 1), (long) (i * (20L / (speed / 5f))));
+                                }
+                            }
                         }
-                    });
-                } else if (e.getCause().getMessage() != null && (e.getCause().getMessage().contains("timeout") || e.getCause().getMessage().contains("failed to connect"))) {
-                    sendLogToCrashlytics(e);
-                    if (vibrationEnabled) vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else if (instantPrompt && !resultText.isEmpty()) {
+                        // 继续 ChatGPT API 请求（如果此功能要保留）
+                        instantPrompt = false;
+                        startGPTApiRequest(new PromptModel(-1, Integer.MIN_VALUE, "", resultText, false));
+                    }
+                    // ... (其他现有逻辑，如 resendButton 可见性) ...
+                    if (new File(getCacheDir(), sp.getString("net.devemperor.dictate.last_file_name", "audio.mp3")).exists()
+                            && sp.getBoolean("net.devemperor.dictate.resend_button", false)) {
+                        mainHandler.post(() -> resendButton.setVisibility(View.VISIBLE));
+                    }
+
+                } catch (IOException e) { // IOException 来自 client.newCall().execute()
+                    if (!(e instanceof java.io.InterruptedIOException)) {
+                        sendLogToCrashlytics(new RuntimeException("SiliconFlow API IOException", e));
+                        if (vibrationEnabled)
+                            vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
+                        mainHandler.post(() -> {
+                            resendButton.setVisibility(View.VISIBLE);
+                            if (e.getMessage() != null && (e.getMessage().toLowerCase().contains("timeout") || e.getMessage().toLowerCase().contains("failed to connect"))) {
+                                showInfo("timeout");
+                            } else {
+                                showInfo("internet_error");
+                            }
+                        });
+                    }
+                } catch (Exception e) { // 通用 Exception 处理
+                    sendLogToCrashlytics(new RuntimeException("SiliconFlow API General Exception", e));
+                    // ...
+                } finally {
                     mainHandler.post(() -> {
-                        resendButton.setVisibility(View.VISIBLE);
-                        showInfo("timeout");
+                        recordButton.setText(getDictateButtonText()); // 或通用文本
+                        recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                        recordButton.setEnabled(true);
                     });
                 }
-            }
-
-
-            mainHandler.post(() -> {
-                recordButton.setText(getDictateButtonText());
-                recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
-                recordButton.setEnabled(true);
             });
-        });
+        }else{
+            speechApiThread.execute(() -> {
+                try {
+                    OpenAIOkHttpClient.Builder clientBuilder = OpenAIOkHttpClient.builder()
+                            .apiKey(apiKey)
+                            .baseUrl(sp.getBoolean("net.devemperor.dictate.custom_api_host_enabled", false) ? customApiHost : "https://api.openai.com/v1/")
+                            .timeout(Duration.ofSeconds(120));
+
+                    TranscriptionCreateParams.Builder transcriptionBuilder = TranscriptionCreateParams.builder()
+                            .file(audioFile.toPath())
+                            .model(transcriptionModel)
+                            .responseFormat(AudioResponseFormat.JSON);  // gpt-4o-transcribe only supports json
+
+                    if (!currentInputLanguageValue.equals("detect")) transcriptionBuilder.language(currentInputLanguageValue);
+                    if (!stylePrompt.isEmpty()) transcriptionBuilder.prompt(stylePrompt);
+                    if (sp.getBoolean("net.devemperor.dictate.proxy_enabled", false)) {
+                        clientBuilder.proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost.split(":")[0], Integer.parseInt(proxyHost.split(":")[1]))));
+                    }
+
+                    Transcription transcription = clientBuilder.build().audio().transcriptions().create(transcriptionBuilder.build()).asTranscription();
+                    String resultText = transcription.text();
+
+                    usageDb.edit(transcriptionModel, DictateUtils.getAudioDuration(audioFile), 0, 0);
+
+                    if (!instantPrompt) {
+                        InputConnection inputConnection = getCurrentInputConnection();
+                        if (inputConnection != null) {
+                            if (sp.getBoolean("net.devemperor.dictate.instant_output", false)) {
+                                inputConnection.commitText(resultText, 1);
+                            } else {
+                                int speed = sp.getInt("net.devemperor.dictate.output_speed", 5);
+                                for (int i = 0; i < resultText.length(); i++) {
+                                    char character = resultText.charAt(i);
+                                    mainHandler.postDelayed(() -> inputConnection.commitText(String.valueOf(character), 1), (long) (i * (20L / (speed / 5f))));
+                                }
+                            }
+                        }
+                    } else {
+                        // continue with ChatGPT API request
+                        instantPrompt = false;
+                        startGPTApiRequest(new PromptModel(-1, Integer.MIN_VALUE, "", resultText, false));
+                    }
+
+                    if (new File(getCacheDir(), sp.getString("net.devemperor.dictate.last_file_name", "audio.mp3")).exists()
+                            && sp.getBoolean("net.devemperor.dictate.resend_button", false)) {
+                        mainHandler.post(() -> resendButton.setVisibility(View.VISIBLE));
+                    }
+
+                } catch (RuntimeException e) {
+                    if (!(e.getCause() instanceof InterruptedIOException)) {
+                        sendLogToCrashlytics(e);
+                        if (vibrationEnabled) vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
+                        mainHandler.post(() -> {
+                            resendButton.setVisibility(View.VISIBLE);
+                            if (Objects.requireNonNull(e.getMessage()).contains("API key")) {
+                                showInfo("invalid_api_key");
+                            } else if (e.getMessage().contains("quota")) {
+                                showInfo("quota_exceeded");
+                            } else if (e.getMessage().contains("audio duration") || e.getMessage().contains("content size limit")) {  // gpt-o-transcribe and whisper have different limits
+                                showInfo("content_size_limit");
+                            } else if (e.getMessage().contains("format")) {
+                                showInfo("format_not_supported");
+                            } else {
+                                showInfo("internet_error");
+                            }
+                        });
+                    } else if (e.getCause().getMessage() != null && (e.getCause().getMessage().contains("timeout") || e.getCause().getMessage().contains("failed to connect"))) {
+                        sendLogToCrashlytics(e);
+                        if (vibrationEnabled) vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
+                        mainHandler.post(() -> {
+                            resendButton.setVisibility(View.VISIBLE);
+                            showInfo("timeout");
+                        });
+                    }
+                }
+
+
+                mainHandler.post(() -> {
+                    recordButton.setText(getDictateButtonText());
+                    recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                    recordButton.setEnabled(true);
+                });
+            });
+        }
+
     }
 
     private void startGPTApiRequest(PromptModel model) {
