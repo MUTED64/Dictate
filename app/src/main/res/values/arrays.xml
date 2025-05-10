@@ -248,6 +248,7 @@
         <item>GPT-4 Turbo</item>
         <item>GPT-4</item>
         <item>GPT-3.5 Turbo</item>
+        <item>Qwen2.5-7B-Instruct</item>
     </string-array>
     <string-array name="dictate_rewording_models_values">
         <item>o3-mini</item>
@@ -258,6 +259,7 @@
         <item>gpt-4-turbo</item>
         <item>gpt-4</item>
         <item>gpt-3.5-turbo</item>
+        <item>Qwen/Qwen2.5-7B-Instruct</item>
     </string-array>
 
     <string-array name="dictate_default_input_languages">
