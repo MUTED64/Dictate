@@ -7,6 +7,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        debug {
+            storeFile properties.getProperty('path')
+            storePassword properties.getProperty('password1')
+            keyAlias properties.getProperty('alias')
+            keyPassword properties.getProperty('password2')
+        }
+    }
     namespace 'net.devemperor.dictate'
     compileSdk 35
 
