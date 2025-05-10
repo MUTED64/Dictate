@@ -6,13 +6,19 @@ plugins {
 //    id 'com.google.firebase.crashlytics'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
 android {
     signingConfigs {
         debug {
-            storeFile properties.getProperty('path')
-            storePassword properties.getProperty('password1')
-            keyAlias properties.getProperty('alias')
-            keyPassword properties.getProperty('password2')
+            storeFile file(localProperties.getProperty('path'))
+            storePassword localProperties.getProperty('password1')
+            keyAlias localProperties.getProperty('alias')
+            keyPassword localProperties.getProperty('password2')
         }
     }
     namespace 'net.devemperor.dictate'
