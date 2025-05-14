@@ -215,4 +215,8 @@
     <string name="dictate_settings_silicon_api_key_title">Change Siliconflow API key 🔑</string>
     <string name="dictate_settings_switch_back_after_transcription_title">Auto-switch back 🔄</string>
     <string name="dictate_settings_switch_back_after_transcription_summary">Automatically switch back to the previous keyboard after transcription/rewording</string>
+    <string name="dictate_settings_remove_punctuation_title">Remove punctuation 🧼</string>
+    <string name="dictate_settings_remove_punctuation_summary">Remove punctuation from transcribed text before AI rewording</string>
+    <string name="dictate_settings_remove_period_title">Remove period 🧼</string>
+    <string name="dictate_settings_remove_period_summary">Remove period from transcribed text before AI rewording</string>
 </resources>

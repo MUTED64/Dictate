@@ -203,4 +203,8 @@
     <string name="dictate_settings_silicon_api_key_title">更改 Siliconflow API 密钥 🔑</string>
     <string name="dictate_settings_switch_back_after_transcription_title">转录完成自动切换输入法 🔄</string>
     <string name="dictate_settings_switch_back_after_transcription_summary">转录完成自动切换到上一个使用过的输入法</string>
+    <string name="dictate_settings_remove_punctuation_title">移除标点符号 🧼</string>
+    <string name="dictate_settings_remove_punctuation_summary">在 AI 重述前，从转录文本中移除标点符号</string>
+    <string name="dictate_settings_remove_period_title">移除句号 🧼</string>
+    <string name="dictate_settings_remove_period_summary">在 AI 重述前，从转录文本中移除句号</string>
 </resources>

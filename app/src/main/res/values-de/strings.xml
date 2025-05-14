@@ -204,4 +204,8 @@
     <string name="dictate_settings_silicon_api_key_title">Change Siliconflow API key 🔑</string>
     <string name="dictate_settings_switch_back_after_transcription_title">Automatisch zurückwechseln 🔄</string>
     <string name="dictate_settings_switch_back_after_transcription_summary">Nach Transkription/Überarbeitung automatisch zur vorherigen Tastatur zurückwechseln</string>
+    <string name="dictate_settings_remove_punctuation_title">Satzzeichen entfernen 🧼</string>
+    <string name="dictate_settings_remove_punctuation_summary">Satzzeichen aus dem transkribierten Text vor der KI-Überarbeitung entfernen</string>
+    <string name="dictate_settings_remove_period_title">Entfernen Sie den Punkt 🧼</string>
+    <string name="dictate_settings_remove_period_summary">Entfernen Sie den Punkt</string>
 </resources>

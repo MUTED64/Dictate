@@ -261,4 +261,21 @@ public class DictateUtils {
                 return "";
         }
     }
+
+    public static String removePunctuation(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        // punctuation and emoji
+        return text.replaceAll("[\\p{P}\\p{IsEmoji}]", " ").strip();
+    }
+
+    // 移除句号
+    public static String removePeriod(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        // punctuation and emoji
+        return text.replaceAll("[。]", " ").strip();
+    }
 }

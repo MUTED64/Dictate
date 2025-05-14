@@ -144,6 +144,8 @@ public class DictateInputMethodService extends InputMethodService {
     private MaterialButton editPasteButton;
     private LinearLayout overlayCharactersLl;
     private boolean autoSwitchBackAfterTranscription;
+    private boolean removePunctuationEnabled;
+    private boolean removePeriodEnabled;
 
     PromptsDatabaseHelper promptsDb;
     PromptsKeyboardAdapter promptsAdapter;
@@ -646,6 +648,8 @@ public class DictateInputMethodService extends InputMethodService {
             recordButton.performClick();
         }
 
+        removePunctuationEnabled = sp.getBoolean("net.devemperor.dictate.remove_punctuation", false);
+        removePeriodEnabled = sp.getBoolean("net.devemperor.dictate.remove_period", false);
         autoSwitchBackAfterTranscription = sp.getBoolean("net.devemperor.dictate.switch_back_after_transcription", false);
     }
 
@@ -854,6 +858,14 @@ public class DictateInputMethodService extends InputMethodService {
                     // 调整成本计算（或删除，如果无关紧要）
                     // usageDb.edit("FunAudioLLM/SenseVoiceSmall", DictateUtils.getAudioDuration(audioFile), 0, 0); // 调整模型名称
 
+                    if (removePunctuationEnabled) {
+                        resultText = DictateUtils.removePunctuation(resultText);
+                    }
+
+                    if (removePeriodEnabled) {
+                        resultText = DictateUtils.removePeriod(resultText);
+                    }
+
                     // 其余的插入文本等逻辑保持相似
                     if (!instantPrompt && !resultText.isEmpty()) {
                         InputConnection inputConnection = getCurrentInputConnection();
@@ -928,6 +940,14 @@ public class DictateInputMethodService extends InputMethodService {
 
                     Transcription transcription = clientBuilder.build().audio().transcriptions().create(transcriptionBuilder.build()).asTranscription();
                     String resultText = transcription.text();
+
+                    if (removePunctuationEnabled) {
+                        resultText = DictateUtils.removePunctuation(resultText);
+                    }
+
+                    if (removePeriodEnabled) {
+                        resultText = DictateUtils.removePeriod(resultText);
+                    }
 
                     usageDb.edit(transcriptionModel, DictateUtils.getAudioDuration(audioFile), 0, 0);
 
@@ -1250,4 +1270,55 @@ public class DictateInputMethodService extends InputMethodService {
         }
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d("DictateService", "onDestroy called. Cleaning up resources.");
+
+        // Release MediaRecorder if active
+        if (recorder != null) {
+            try {
+                recorder.stop();
+            } catch (RuntimeException ignored) {
+                // Already stopped or not started
+            }
+            recorder.release();
+            recorder = null;
+        }
+
+        // Remove handler callbacks
+        if (recordTimeHandler != null && recordTimeRunnable != null) {
+            recordTimeHandler.removeCallbacks(recordTimeRunnable);
+        }
+        if (deleteHandler != null && deleteRunnable != null) {
+            deleteHandler.removeCallbacks(deleteRunnable);
+        }
+        // mainHandler typically doesn't need messages removed unless they are long-lived
+        // and could cause issues if the service context is gone.
+
+        // Shutdown ExecutorServices
+        if (speechApiThread != null && !speechApiThread.isShutdown()) {
+            speechApiThread.shutdownNow();
+            Log.d("DictateService", "Speech API thread shutdown.");
+        }
+        if (rewordingApiThread != null && !rewordingApiThread.isShutdown()) {
+            rewordingApiThread.shutdownNow();
+            Log.d("DictateService", "Rewording API thread shutdown.");
+        }
+
+        // Abandon audio focus
+        if (am != null && audioFocusRequest != null && audioFocusEnabled) {
+            am.abandonAudioFocusRequest(audioFocusRequest);
+            Log.d("DictateService", "Audio focus abandoned.");
+        }
+
+        // Close databases (optional here, as they are usually managed by helpers,
+        // but good for completeness if you open them directly)
+        if (promptsDb != null) {
+            promptsDb.close();
+        }
+        if (usageDb != null) {
+            usageDb.close();
+        }
+    }
 }
