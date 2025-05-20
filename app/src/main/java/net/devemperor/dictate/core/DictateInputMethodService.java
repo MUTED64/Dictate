@@ -91,9 +91,11 @@ public class DictateInputMethodService extends InputMethodService {
     private Handler deleteHandler;
     private Handler recordTimeHandler;
     private Handler timeoutHandler;
+    private Handler retryHandler;
     private Runnable deleteRunnable;
     private Runnable recordTimeRunnable;
     private Runnable timeoutRunnable;
+    private Runnable retryRunnable;
 
     // define variables and objects
     private long elapsedTime;
@@ -109,6 +111,10 @@ public class DictateInputMethodService extends InputMethodService {
     private boolean spaceButtonUserHasSwiped = false;
     private int currentInputLanguagePos;
     private String currentInputLanguageValue;
+
+    // 添加重试相关变量
+    private int apiRequestAttempts = 0;
+    private static final int MAX_API_ATTEMPTS = 3;
 
     private MediaRecorder recorder;
     private ExecutorService speechApiThread;
@@ -165,6 +171,7 @@ public class DictateInputMethodService extends InputMethodService {
         deleteHandler = new Handler();
         recordTimeHandler = new Handler(Looper.getMainLooper());
         timeoutHandler = new Handler(Looper.getMainLooper());
+        retryHandler = new Handler(Looper.getMainLooper());
 
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         sp = getSharedPreferences("net.devemperor.dictate", MODE_PRIVATE);
@@ -766,6 +773,9 @@ public class DictateInputMethodService extends InputMethodService {
         isRecording = false;
         isPaused = false;
 
+        // 增加请求尝试次数
+        apiRequestAttempts++;
+
         // 设置转录超时处理，防止请求卡死
         if (timeoutRunnable != null) {
             timeoutHandler.removeCallbacks(timeoutRunnable);
@@ -775,14 +785,38 @@ public class DictateInputMethodService extends InputMethodService {
                 speechApiThread.shutdownNow();
             }
             mainHandler.post(() -> {
-                recordButton.setText(getDictateButtonText());
-                recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
-                recordButton.setEnabled(true);
-                resendButton.setVisibility(View.VISIBLE);
-                showInfo("timeout");
+                if (apiRequestAttempts >= MAX_API_ATTEMPTS) {
+                    // 如果已达到最大尝试次数，显示超时信息
+                    apiRequestAttempts = 0;
+                    recordButton.setText(getDictateButtonText());
+                    recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                    recordButton.setEnabled(true);
+                    resendButton.setVisibility(View.VISIBLE);
+                    showInfo("timeout");
+                }
             });
         };
         timeoutHandler.postDelayed(timeoutRunnable, 30000); // 30秒超时
+
+        // 设置4秒快速重试
+        if (retryRunnable != null) {
+            retryHandler.removeCallbacks(retryRunnable);
+        }
+        retryRunnable = () -> {
+            if (speechApiThread != null) {
+                speechApiThread.shutdownNow();
+            }
+            
+            if (apiRequestAttempts < MAX_API_ATTEMPTS) {
+                // 如果未达到最大尝试次数，自动重试
+                mainHandler.post(() -> {
+                    recordButton.setText(R.string.dictate_sending);
+                    recordButton.setText(getString(R.string.dictate_sending) + " (" + apiRequestAttempts + "/" + MAX_API_ATTEMPTS + ")");
+                    startWhisperApiRequest();
+                });
+            }
+        };
+        retryHandler.postDelayed(retryRunnable, 4000); // 4秒后如果没有响应就重试
 
         if (audioFocusEnabled) am.abandonAudioFocusRequest(audioFocusRequest);
 
@@ -844,6 +878,14 @@ public class DictateInputMethodService extends InputMethodService {
                     // 5. 执行 Request 并处理响应
                     String resultText = "";
                     try (okhttp3.Response response = client.newCall(request).execute()) {
+                        // 请求成功，清除重试计数
+                        apiRequestAttempts = 0;
+                        
+                        // 清除重试处理器
+                        if (retryRunnable != null) {
+                            retryHandler.removeCallbacks(retryRunnable);
+                        }
+                        
                         if (!response.isSuccessful()) {
                             String errorBody = response.body() != null ? response.body().string() : "Unknown error";
                             Log.e("SiliconFlowAPI", "Error: " + response.code() + " " + errorBody);
@@ -931,11 +973,14 @@ public class DictateInputMethodService extends InputMethodService {
                         if (vibrationEnabled)
                             vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
                         mainHandler.post(() -> {
-                            resendButton.setVisibility(View.VISIBLE);
-                            if (e.getMessage() != null && (e.getMessage().toLowerCase().contains("timeout") || e.getMessage().toLowerCase().contains("failed to connect"))) {
-                                showInfo("timeout");
-                            } else {
-                                showInfo("internet_error");
+                            if (apiRequestAttempts >= MAX_API_ATTEMPTS) {
+                                apiRequestAttempts = 0;
+                                resendButton.setVisibility(View.VISIBLE);
+                                if (e.getMessage() != null && (e.getMessage().toLowerCase().contains("timeout") || e.getMessage().toLowerCase().contains("failed to connect"))) {
+                                    showInfo("timeout");
+                                } else {
+                                    showInfo("internet_error");
+                                }
                             }
                         });
                     }
@@ -943,23 +988,33 @@ public class DictateInputMethodService extends InputMethodService {
                     sendLogToCrashlytics(new RuntimeException("SiliconFlow API General Exception", e));
                     Log.e("SiliconFlowAPI", "General exception", e); // 添加日志记录
                     mainHandler.post(() -> {
-                        recordButton.setText(getDictateButtonText());
-                        recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
-                        recordButton.setEnabled(true);
-                        resendButton.setVisibility(View.VISIBLE); // 确保重发按钮可见
-                        showInfo("internet_error");
+                        if (apiRequestAttempts >= MAX_API_ATTEMPTS) {
+                            apiRequestAttempts = 0;
+                            recordButton.setText(getDictateButtonText());
+                            recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                            recordButton.setEnabled(true);
+                            resendButton.setVisibility(View.VISIBLE); // 确保重发按钮可见
+                            showInfo("internet_error");
+                        }
                     });
                 } finally {
                     mainHandler.post(() -> {
-                        recordButton.setText(getDictateButtonText());
-                        recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
-                        recordButton.setEnabled(true);
-                        if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            switchToPreviousInputMethod();
-                        }
-                        // 移除超时回调
-                        if (timeoutRunnable != null) {
-                            timeoutHandler.removeCallbacks(timeoutRunnable);
+                        // 如果成功完成请求或已达到最大尝试次数，恢复UI状态
+                        if (apiRequestAttempts == 0 || apiRequestAttempts >= MAX_API_ATTEMPTS) {
+                            apiRequestAttempts = 0;
+                            recordButton.setText(getDictateButtonText());
+                            recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                            recordButton.setEnabled(true);
+                            if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                switchToPreviousInputMethod();
+                            }
+                            // 移除超时回调
+                            if (timeoutRunnable != null) {
+                                timeoutHandler.removeCallbacks(timeoutRunnable);
+                            }
+                            if (retryRunnable != null) {
+                                retryHandler.removeCallbacks(retryRunnable);
+                            }
                         }
                     });
                 }
@@ -984,6 +1039,15 @@ public class DictateInputMethodService extends InputMethodService {
                     }
 
                     Transcription transcription = clientBuilder.build().audio().transcriptions().create(transcriptionBuilder.build()).asTranscription();
+                    
+                    // 请求成功，清除重试计数
+                    apiRequestAttempts = 0;
+                    
+                    // 清除重试处理器
+                    if (retryRunnable != null) {
+                        retryHandler.removeCallbacks(retryRunnable);
+                    }
+                    
                     String resultText = transcription.text();
 
                     if (removePunctuationEnabled) {
@@ -1025,40 +1089,53 @@ public class DictateInputMethodService extends InputMethodService {
                         sendLogToCrashlytics(e);
                         if (vibrationEnabled) vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
                         mainHandler.post(() -> {
-                            resendButton.setVisibility(View.VISIBLE);
-                            if (Objects.requireNonNull(e.getMessage()).contains("API key")) {
-                                showInfo("invalid_api_key");
-                            } else if (e.getMessage().contains("quota")) {
-                                showInfo("quota_exceeded");
-                            } else if (e.getMessage().contains("audio duration") || e.getMessage().contains("content size limit")) {  // gpt-o-transcribe and whisper have different limits
-                                showInfo("content_size_limit");
-                            } else if (e.getMessage().contains("format")) {
-                                showInfo("format_not_supported");
-                            } else {
-                                showInfo("internet_error");
+                            if (apiRequestAttempts >= MAX_API_ATTEMPTS) {
+                                apiRequestAttempts = 0;
+                                resendButton.setVisibility(View.VISIBLE);
+                                if (Objects.requireNonNull(e.getMessage()).contains("API key")) {
+                                    showInfo("invalid_api_key");
+                                } else if (e.getMessage().contains("quota")) {
+                                    showInfo("quota_exceeded");
+                                } else if (e.getMessage().contains("audio duration") || e.getMessage().contains("content size limit")) {  // gpt-o-transcribe and whisper have different limits
+                                    showInfo("content_size_limit");
+                                } else if (e.getMessage().contains("format")) {
+                                    showInfo("format_not_supported");
+                                } else {
+                                    showInfo("internet_error");
+                                }
                             }
                         });
                     } else if (e.getCause().getMessage() != null && (e.getCause().getMessage().contains("timeout") || e.getCause().getMessage().contains("failed to connect"))) {
                         sendLogToCrashlytics(e);
                         if (vibrationEnabled) vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
                         mainHandler.post(() -> {
-                            resendButton.setVisibility(View.VISIBLE);
-                            showInfo("timeout");
+                            if (apiRequestAttempts >= MAX_API_ATTEMPTS) {
+                                apiRequestAttempts = 0;
+                                resendButton.setVisibility(View.VISIBLE);
+                                showInfo("timeout");
+                            }
                         });
                     }
                 }
 
 
                 mainHandler.post(() -> {
-                    recordButton.setText(getDictateButtonText());
-                    recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
-                    recordButton.setEnabled(true);
-                    if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        switchToPreviousInputMethod();
-                    }
-                    // 移除超时回调
-                    if (timeoutRunnable != null) {
-                        timeoutHandler.removeCallbacks(timeoutRunnable);
+                    // 如果成功完成请求或已达到最大尝试次数，恢复UI状态
+                    if (apiRequestAttempts == 0 || apiRequestAttempts >= MAX_API_ATTEMPTS) {
+                        apiRequestAttempts = 0;
+                        recordButton.setText(getDictateButtonText());
+                        recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                        recordButton.setEnabled(true);
+                        if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            switchToPreviousInputMethod();
+                        }
+                        // 移除超时回调
+                        if (timeoutRunnable != null) {
+                            timeoutHandler.removeCallbacks(timeoutRunnable);
+                        }
+                        if (retryRunnable != null) {
+                            retryHandler.removeCallbacks(retryRunnable);
+                        }
                     }
                 });
             });
@@ -1143,6 +1220,7 @@ public class DictateInputMethodService extends InputMethodService {
                     });
                 }
             }
+
 
             mainHandler.post(() -> {
                 promptsRv.setVisibility(View.VISIBLE);
@@ -1341,6 +1419,9 @@ public class DictateInputMethodService extends InputMethodService {
         if (deleteHandler != null && deleteRunnable != null) {
             deleteHandler.removeCallbacks(deleteRunnable);
         }
+        if (retryHandler != null && retryRunnable != null) {
+            retryHandler.removeCallbacks(retryRunnable);
+        }
         // mainHandler typically doesn't need messages removed unless they are long-lived
         // and could cause issues if the service context is gone.
 
@@ -1398,5 +1479,13 @@ public class DictateInputMethodService extends InputMethodService {
         if (timeoutRunnable != null) {
             timeoutHandler.removeCallbacks(timeoutRunnable);
         }
+        
+        // 移除重试处理
+        if (retryRunnable != null) {
+            retryHandler.removeCallbacks(retryRunnable);
+        }
+        
+        // 重置尝试次数
+        apiRequestAttempts = 0;
     }
 }
