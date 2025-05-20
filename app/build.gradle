@@ -13,12 +13,14 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    signingConfigs {
-        debug {
-            storeFile file(localProperties.getProperty('path'))
-            storePassword localProperties.getProperty('password1')
-            keyAlias localProperties.getProperty('alias')
-            keyPassword localProperties.getProperty('password2')
+    if (localPropertiesFile.exists() && localProperties.getProperty('path')) {
+        signingConfigs {
+            debug {
+                storeFile file(localProperties.getProperty('path'))
+                storePassword localProperties.getProperty('password1')
+                keyAlias localProperties.getProperty('alias')
+                keyPassword localProperties.getProperty('password2')
+            }
         }
     }
     namespace 'net.devemperor.dictate'
