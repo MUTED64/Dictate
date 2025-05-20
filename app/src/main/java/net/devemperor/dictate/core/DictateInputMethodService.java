@@ -90,8 +90,10 @@ public class DictateInputMethodService extends InputMethodService {
     private Handler mainHandler;
     private Handler deleteHandler;
     private Handler recordTimeHandler;
+    private Handler timeoutHandler;
     private Runnable deleteRunnable;
     private Runnable recordTimeRunnable;
+    private Runnable timeoutRunnable;
 
     // define variables and objects
     private long elapsedTime;
