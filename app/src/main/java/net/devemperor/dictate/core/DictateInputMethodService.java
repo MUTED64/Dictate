@@ -570,7 +570,7 @@ public class DictateInputMethodService extends InputMethodService {
         if (!isRecording) {
             recordButton.setText(getDictateButtonText());
         } else if (isPaused) {
-            recordButton.setText(R.string.dictate_continue);
+            recordButton.setText(R.string.dictate_record);
         }
 
         if (sp.getBoolean("net.devemperor.dictate.rewording_enabled", true)) {
