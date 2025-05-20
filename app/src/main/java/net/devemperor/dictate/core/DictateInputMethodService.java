@@ -779,9 +779,9 @@ public class DictateInputMethodService extends InputMethodService {
 
                     // 2. 创建 OkHttpClient 实例
                     OkHttpClient client = new OkHttpClient.Builder()
-                            .connectTimeout(120, TimeUnit.SECONDS) // 像原始代码一样设置超时
-                            .readTimeout(120, TimeUnit.SECONDS)
-                            .writeTimeout(120, TimeUnit.SECONDS)
+                            .connectTimeout(5, TimeUnit.SECONDS) // 减少超时时间
+                            .readTimeout(5, TimeUnit.SECONDS)
+                            .writeTimeout(5, TimeUnit.SECONDS)
                             .proxy(sp.getBoolean("net.devemperor.dictate.proxy_enabled", false) ?
                                     new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
                                             sp.getString("net.devemperor.dictate.proxy_host", getString(R.string.dictate_settings_proxy_hint)).split(":")[0],
@@ -907,7 +907,14 @@ public class DictateInputMethodService extends InputMethodService {
                     }
                 } catch (Exception e) { // 通用 Exception 处理
                     sendLogToCrashlytics(new RuntimeException("SiliconFlow API General Exception", e));
-                    // ...
+                    Log.e("SiliconFlowAPI", "General exception", e); // 添加日志记录
+                    mainHandler.post(() -> {
+                        recordButton.setText(getDictateButtonText());
+                        recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                        recordButton.setEnabled(true);
+                        resendButton.setVisibility(View.VISIBLE); // 确保重发按钮可见
+                        showInfo("internet_error");
+                    });
                 } finally {
                     mainHandler.post(() -> {
                         recordButton.setText(getDictateButtonText()); // 或通用文本
@@ -1272,7 +1279,6 @@ public class DictateInputMethodService extends InputMethodService {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
         Log.d("DictateService", "onDestroy called. Cleaning up resources.");
 
         // Release MediaRecorder if active
@@ -1299,11 +1305,17 @@ public class DictateInputMethodService extends InputMethodService {
         // Shutdown ExecutorServices
         if (speechApiThread != null && !speechApiThread.isShutdown()) {
             speechApiThread.shutdownNow();
+            speechApiThread = null;
             Log.d("DictateService", "Speech API thread shutdown.");
         }
         if (rewordingApiThread != null && !rewordingApiThread.isShutdown()) {
             rewordingApiThread.shutdownNow();
+            rewordingApiThread = null;
             Log.d("DictateService", "Rewording API thread shutdown.");
+        }
+
+        if (timeoutHandler != null && timeoutRunnable != null) {
+            timeoutHandler.removeCallbacks(timeoutRunnable);
         }
 
         // Abandon audio focus
@@ -1320,5 +1332,7 @@ public class DictateInputMethodService extends InputMethodService {
         if (usageDb != null) {
             usageDb.close();
         }
+        
+        super.onDestroy();
     }
 }
