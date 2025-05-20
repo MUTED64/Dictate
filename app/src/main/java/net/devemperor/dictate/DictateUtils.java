@@ -267,7 +267,7 @@ public class DictateUtils {
             return text;
         }
         // punctuation and emoji
-        return text.replaceAll("[\\p{P}\\p{IsEmoji}]", " ").strip();
+        return text.replaceAll("[\\p{P}]", " ").strip();
     }
 
     // 移除句号
