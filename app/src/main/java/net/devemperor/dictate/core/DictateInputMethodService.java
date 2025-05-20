@@ -164,6 +164,7 @@ public class DictateInputMethodService extends InputMethodService {
         mainHandler = new Handler(Looper.getMainLooper());
         deleteHandler = new Handler();
         recordTimeHandler = new Handler(Looper.getMainLooper());
+        timeoutHandler = new Handler(Looper.getMainLooper());
 
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         sp = getSharedPreferences("net.devemperor.dictate", MODE_PRIVATE);
@@ -562,6 +563,16 @@ public class DictateInputMethodService extends InputMethodService {
     public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
 
+        // 在启动输入视图时清理可能残留的资源，确保界面恢复正常状态
+        cleanupTranscriptionResources();
+
+        isDeleting = false;
+        if (!isRecording) {
+            recordButton.setText(getDictateButtonText());
+        } else if (isPaused) {
+            recordButton.setText(R.string.dictate_continue);
+        }
+
         if (sp.getBoolean("net.devemperor.dictate.rewording_enabled", true)) {
             promptsCl.setVisibility(View.VISIBLE);
 
@@ -693,6 +704,9 @@ public class DictateInputMethodService extends InputMethodService {
     }
 
     private void startRecording() {
+        // 确保清理任何可能运行的前一次转录资源
+        cleanupTranscriptionResources();
+        
         audioFile = new File(getCacheDir(), "audio.mp3");
         sp.edit().putString("net.devemperor.dictate.last_file_name", audioFile.getName()).apply();
 
@@ -752,6 +766,24 @@ public class DictateInputMethodService extends InputMethodService {
         isRecording = false;
         isPaused = false;
 
+        // 设置转录超时处理，防止请求卡死
+        if (timeoutRunnable != null) {
+            timeoutHandler.removeCallbacks(timeoutRunnable);
+        }
+        timeoutRunnable = () -> {
+            if (speechApiThread != null) {
+                speechApiThread.shutdownNow();
+            }
+            mainHandler.post(() -> {
+                recordButton.setText(getDictateButtonText());
+                recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+                recordButton.setEnabled(true);
+                resendButton.setVisibility(View.VISIBLE);
+                showInfo("timeout");
+            });
+        };
+        timeoutHandler.postDelayed(timeoutRunnable, 30000); // 30秒超时
+
         if (audioFocusEnabled) am.abandonAudioFocusRequest(audioFocusRequest);
 
         String stylePrompt;
@@ -781,9 +813,9 @@ public class DictateInputMethodService extends InputMethodService {
 
                     // 2. 创建 OkHttpClient 实例
                     OkHttpClient client = new OkHttpClient.Builder()
-                            .connectTimeout(5, TimeUnit.SECONDS) // 减少超时时间
-                            .readTimeout(5, TimeUnit.SECONDS)
-                            .writeTimeout(5, TimeUnit.SECONDS)
+                            .connectTimeout(10, TimeUnit.SECONDS) // 减少超时时间
+                            .readTimeout(10, TimeUnit.SECONDS)
+                            .writeTimeout(10, TimeUnit.SECONDS)
                             .proxy(sp.getBoolean("net.devemperor.dictate.proxy_enabled", false) ?
                                     new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
                                             sp.getString("net.devemperor.dictate.proxy_host", getString(R.string.dictate_settings_proxy_hint)).split(":")[0],
@@ -919,11 +951,15 @@ public class DictateInputMethodService extends InputMethodService {
                     });
                 } finally {
                     mainHandler.post(() -> {
-                        recordButton.setText(getDictateButtonText()); // 或通用文本
+                        recordButton.setText(getDictateButtonText());
                         recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
                         recordButton.setEnabled(true);
                         if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                             switchToPreviousInputMethod();
+                        }
+                        // 移除超时回调
+                        if (timeoutRunnable != null) {
+                            timeoutHandler.removeCallbacks(timeoutRunnable);
                         }
                     });
                 }
@@ -1019,6 +1055,10 @@ public class DictateInputMethodService extends InputMethodService {
                     recordButton.setEnabled(true);
                     if (!instantPrompt && autoSwitchBackAfterTranscription && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         switchToPreviousInputMethod();
+                    }
+                    // 移除超时回调
+                    if (timeoutRunnable != null) {
+                        timeoutHandler.removeCallbacks(timeoutRunnable);
                     }
                 });
             });
@@ -1336,5 +1376,27 @@ public class DictateInputMethodService extends InputMethodService {
         }
         
         super.onDestroy();
+    }
+
+    // 添加一个新方法用于清理资源
+    private void cleanupTranscriptionResources() {
+        // 关闭正在进行的语音API线程
+        if (speechApiThread != null && !speechApiThread.isShutdown()) {
+            speechApiThread.shutdownNow();
+            speechApiThread = null;
+            Log.d("DictateService", "Speech API thread cleaned up during recovery.");
+        }
+        
+        // 确保按钮恢复正常状态
+        if (recordButton != null) {
+            recordButton.setText(getDictateButtonText());
+            recordButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_baseline_mic_20, 0, R.drawable.ic_baseline_folder_open_20, 0);
+            recordButton.setEnabled(true);
+        }
+        
+        // 移除正在运行的超时处理
+        if (timeoutRunnable != null) {
+            timeoutHandler.removeCallbacks(timeoutRunnable);
+        }
     }
 }
